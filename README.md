@@ -2,7 +2,7 @@
 
 Cinco estratégias, **um notebook interativo para cada uma**. A ideia é enxergar o que cada estratégia acrescenta e experimentar essa diferença antes de usar em outro processo.
 
-Os notebooks trazem códigos em português, comentários curtos, identificação com ruído, validação em outro ensaio e sintonia IMC. A teoria, as bibliotecas, a origem dos modelos e os materiais de apoio ficam no README de cada pasta.
+Os notebooks trazem códigos em português, comentários curtos, ensaios CSV com ruído, comparação P1D/P2D/P3D, escolha com parcimônia, validação final separada e sintonia IMC. A teoria, as bibliotecas, a origem dos modelos e os materiais de apoio ficam no README de cada pasta.
 
 ## Por onde começar
 
@@ -18,12 +18,19 @@ Abra uma pasta, leia o diferencial e use o link **Abrir no Colab**. Execute as c
 
 [Pasta desta versão no Google Drive](https://drive.google.com/drive/folders/1wLEY7YQ50n-6a33st90eDabJtU6B0zS7).
 
+## Identificar antes de sintonizar
+
+Separar três etapas: **ajustar** P1D/P2D/P3D no primeiro ensaio, **escolher** no segundo e **validar** no terceiro. Os candidatos têm 3, 4 e 5 parâmetros livres, respectivamente, polos reais estáveis e atraso estimado. Escolher o de menor ordem até 1 ponto percentual abaixo do melhor FIT no ensaio de escolha. O ensaio final não participa do ajuste nem da seleção.
+
+Antes do PI-IMC, somar as constantes de tempo do candidato escolhido para obter `τeq`. É uma redução explícita para a sintonia; a simulação mantém a planta publicada. O experimento de comparação das ordens usa a mesma planta e o mesmo tempo IMC, enquanto o painel de cada estratégia usa a seleção automática.
+
 ## Organização
 
 Cada pasta de estratégia contém:
 
 - `toolbox.ipynb`: o único notebook do tema, com o experimento interativo;
 - `README.md`: teoria, quando aplicar, bibliotecas, artigo brasileiro utilizado e apoio nacional;
+- `dados_ensaio/`: CSVs de ajuste, escolha do modelo e validação final, com colunas `tempo`, `entrada`, `saida`;
 - `assets/` ou `imagens/`: recortes das figuras originais, com fonte indicada;
 - `materiais_aula/`: arquivos fornecidos no acervo da disciplina, preservados para consulta.
 
@@ -39,4 +46,4 @@ Os cinco casos usam funções de transferência publicadas por autores brasileir
 
 As simulações representam os modelos e a faixa de operação descritos em cada tema. Os READMEs explicam as simplificações relevantes. Os créditos e os arquivos de terceiros permanecem associados às suas fontes.
 
-Versão 0.8 — notebooks simplificados e organizados por estratégia.
+Versão 0.9 — identificação por ensaios, parcimônia e comentários impessoais.

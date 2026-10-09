@@ -29,11 +29,13 @@ O caso de origem é um forno de reaquecimento industrial. Aqui o recorte são du
 
 Para cada canal:
 
-$$\Delta Q(s)=\frac{K e^{-\theta s}}{\tau s+1}\Delta m(s).$$
+```math
+\Delta Q(s)=\frac{K e^{-\theta s}}{\tau s+1}\Delta m(s).
+```
 
 `m` é a abertura da válvula em pontos percentuais; `Q` é vazão em mil Nm³/h. Os modelos são locais e descrevem **variações**, sem fornecer os interceptos das curvas de vazão absoluta. O notebook não calcula temperatura, química de combustão, eficiência ou emissões do forno.
 
-Na identificação, aplica-se um degrau de 5 pontos percentuais ao redor de um ponto de operação e testa-se outra sequência entre −2 e +4 pontos percentuais. Os dados são gerados pelos modelos publicados com ruído gaussiano adicionado; não são os registros industriais do artigo.
+Na identificação, aplicar um degrau de 5 pontos percentuais ao redor de um ponto de operação e reservar duas outras sequências para escolha e validação final. Os dados são gerados pelos modelos publicados com ruído gaussiano adicionado; não são os registros industriais do artigo.
 
 No painel, ambos os canais são normalizados pelo respectivo ganho estático, deixando ganho nominal igual a 1. A escala de comando é comum. Assim, compara-se a proporção **entre fluxos normalizados de demonstração**, sem inferir uma razão estequiométrica a partir dos ganhos das válvulas. A demanda, a razão de 1,10, os instantes de mudança e o ruído são escolhas de ensaio da toolbox.
 
@@ -41,7 +43,9 @@ No painel, ambos os canais são normalizados pelo respectivo ganho estático, de
 
 Para demanda `D` expressa na escala do combustível e razão desejada `R`:
 
-$$r_g=\min(D,Q_a/R),\qquad r_a=\max(RD,RQ_g).$$
+```math
+r_g=\min(D,Q_a/R),\qquad r_a=\max(RD,RQ_g).
+```
 
 Na subida, o pedido de combustível depende do ar já medido. Na descida, o pedido de ar considera o combustível ainda presente. O teste de comparação usa `r_g=D` e `r_a=RD`, com as mesmas plantas, sintonias e realizações de ruído.
 
@@ -49,23 +53,51 @@ O artigo de origem descreve uma arquitetura industrial de **duplo limite cruzado
 
 ## Identificação e validação
 
-O ajuste usa mínimos quadrados não lineares para estimar `K`, `τ` e `θ`, com restrições positivas. A função de previsão soma as respostas aos degraus da entrada; por isso serve tanto ao ensaio de identificação como à sequência de validação.
+Excitar separadamente as malhas de gás e ar com um degrau de 5 pontos percentuais e adicionar ruído gaussiano à medição. Os dados são gerados pelos modelos publicados; não são os registros industriais do artigo. A comparação entre candidatos ocorre separadamente para cada canal.
 
-A validação tem entrada diferente e ruído gerado por outra semente. Os parâmetros ficam congelados. Exibem-se previsão, medição e RMSE:
+Salvar três ensaios separados como CSV em `dados_ensaio/`, com colunas `tempo`, `entrada` e `saida`. Entrada e saída são desvios em relação ao ponto de operação; manter as unidades do canal e do tempo. Os arquivos são `ajuste_<canal>.csv`, `escolha_<canal>.csv` e `validacao_<canal>.csv`; nesta estratégia, os canais são `gas`, `ar`.
 
-$$RMSE=\sqrt{\frac{1}{N}\sum_{k=1}^{N}(Q_k-\widehat Q_k)^2}.$$
+| Modelo candidato | Estrutura | Parâmetros livres |
+|---|---|---:|
+| P1D | Um polo real e atraso | 3: ganho, uma constante de tempo e atraso |
+| P2D | Dois polos reais e atraso | 4: ganho, duas constantes de tempo e atraso |
+| P3D | Três polos reais e atraso | 5: ganho, três constantes de tempo e atraso |
 
-O RMSE está nas unidades da saída. Ruído aditivo deixa um erro mínimo mesmo quando a estrutura do modelo é correta. Um resultado próximo de σ nesta simulação não valida o forno real nem prova robustez a outras condições de operação.
+```math
+\widehat G_n(s)=\frac{K e^{-\theta s}}{\prod_{i=1}^{n}(\tau_i s+1)},\qquad n=1,2,3.
+```
+
+1. **Ajustar:** estimar cada candidato por mínimos quadrados no primeiro ensaio. As constantes de tempo são positivas, garantindo polos reais estáveis; o atraso é estimado e fica não negativo. Os parâmetros publicados geram a planta, mas não são impostos ao ajuste.
+2. **Escolher com parcimônia:** prever o segundo ensaio sem reajustar. Selecionar o modelo de menor ordem cujo FIT fique até **1 ponto percentual abaixo do melhor FIT**. Mais parâmetros só se justificam quando a melhora de previsão superar essa tolerância.
+3. **Validar:** usar o terceiro ensaio apenas para avaliar o modelo escolhido, com entrada e ruído diferentes. Não reajustar parâmetros nem selecionar novamente com esses dados.
+
+```math
+FIT=100\left(1-\frac{\|y-\widehat y\|_2}{\|y-\overline y\|_2}\right),\qquad
+RMSE=\sqrt{\frac{1}{N}\sum_{k=1}^{N}(y_k-\widehat y_k)^2}.
+```
+
+O FIT compara o erro com a variação medida: pode ser negativo e não significa probabilidade de acerto. O RMSE conserva a unidade da saída. Ambos dependem do ensaio e do ruído; uma curva próxima dos pontos de ajuste, sozinha, não comprova qualidade de previsão.
+
+**Antes do PI-IMC, explicitar a redução:** manter o ganho e o atraso do candidato escolhido e usar `τeq = soma(τi)`.
+
+```math
+\tau_{eq}=\sum_{i=1}^{n}\tau_i,\qquad
+\widehat G_{eq}(s)=\frac{K e^{-\theta s}}{\tau_{eq}s+1}.
+```
+
+Essa aproximação preserva o ganho estático e o primeiro momento, mas não toda a dinâmica de P2D/P3D. A planta publicada permanece na simulação. O experimento de comparação usa a mesma planta e o mesmo tempo IMC para os PIs derivados dos três candidatos; o painel principal usa a seleção automática por parcimônia.
 
 ## Sintonia IMC
 
-Todos os PIs são ajustados por IMC:
+Reduzir cada candidato selecionado por `τeq = soma(τi)` e sintonizar os dois PIs por IMC:
 
-$$K_c=\frac{\tau}{K(\lambda+\theta)},\qquad T_i=\tau.$$
+```math
+K_c=\frac{\tau_{eq}}{K(\lambda+\theta)},\qquad T_i=\tau_{eq}.
+```
 
-As estimativas da identificação são usadas no cálculo. Para passar à escala normalizada, divide-se o ganho estimado pelo ganho publicado usado na normalização. Adota-se `λ=8 s` nas duas malhas, uma escolha de projeto próxima da dinâmica mais lenta.
+O ganho, o atraso e `τeq` vêm do modelo selecionado de cada canal. Para passar à escala normalizada, dividir o ganho estimado pelo ganho publicado usado na normalização. Adotar `λ=8 s` nas duas malhas. Na comparação das ordens, manter a mesma planta e o mesmo `λ`; no painel de razão, manter os mesmos PIs nas alternativas de pedidos juntos e limites cruzados.
 
-O motor aplica o PI em passos de 0,05 s, limita o comando ao intervalo 0–1 e interrompe a acumulação integral quando ela empurra o comando para fora da faixa. Cada FOPDT é atualizado pela solução exata da parte de primeira ordem com entrada constante no intervalo; os atrasos nominais são representados por uma fila de amostras. Isso não introduz um modelo em espaço de estados no roteiro.
+O motor aplica o PI em passos de 0,05 s, limita o comando ao intervalo 0–1 e interrompe a acumulação integral quando ela empurra o comando para fora da faixa. Cada planta publicada de primeira ordem com atraso é atualizada pela solução exata da parte de primeira ordem com entrada constante no intervalo; os atrasos nominais usam uma fila de amostras. A ordem escolhida para a identificação não substitui esses modelos publicados.
 
 ## Quando aplicar e quais limites considerar
 
@@ -78,7 +110,7 @@ O seletor limita **referências**, não a vazão real instantaneamente. Atrasos,
 | Biblioteca | Uso no notebook |
 |---|---|
 | NumPy | Vetores, ruído e atualização dos modelos |
-| SciPy (`curve_fit`) | Estimação de parâmetros por mínimos quadrados |
+| SciPy (`least_squares`) | Ajuste dos três candidatos por mínimos quadrados |
 | Matplotlib | Curvas de validação e comparação |
 | ipywidgets | Controles deslizantes e atualização do painel |
 | IPython | Exibição dos controles |
@@ -103,3 +135,7 @@ Os modelos e o caso vêm de [1]; as escolhas de ensaio e a implementação didá
 
 
 Referência da correlação PI utilizada: [APMonitor/BYU — Proportional Integral Control, seção IMC FOPDT Tuning Correlations](https://www.apmonitor.com/pdc/index.php/Main/ProportionalIntegralControl). O artigo brasileiro acima fornece a planta; esta fonte explicita a regra IMC de primeira ordem com atraso.
+
+Referências da identificação: [estruturas de modelos de processo — MathWorks](https://www.mathworks.com/help/ident/ref/idproc.html), [definição de FIT](https://www.mathworks.com/help/ident/ref/compare.html) e [validação de modelos](https://www.mathworks.com/help/ident/ug/validating-models-after-estimation.html). O código Python realiza o ajuste por mínimos quadrados; não utiliza MATLAB.
+
+Para usar ensaios próprios, definir `usar_ensaio_externo=True`. Fornecer os três CSVs por canal em desvios do ponto de operação, começando em equilíbrio com entrada zero, na unidade de tempo e nas escalas desta planta. A família implementada é restrita a ganhos positivos e polos reais estáveis. O ajuste assume entrada mantida entre amostras; atrasos fracionários usam interpolação. Dados com outras dinâmicas exigem outras estruturas e revisão da sintonia.

@@ -29,12 +29,16 @@ O modelo vem de um artigo brasileiro do CBA 2024, de autores do IFRO e da UFSC [
 
 Os números são da Tabela 1, p. 1252, de [1], transcritos como publicados:
 
-$$G_{agua}(s)=\frac{12e^{-3s}}{10s+1},\qquad
-G_{eletrico}(s)=\frac{8e^{-s}}{5s+1}.$$
+```math
+G_{agua}(s)=\frac{12e^{-3s}}{10s+1},\qquad
+G_{eletrico}(s)=\frac{8e^{-s}}{5s+1}.
+```
 
 Para a temperatura externa constante e o sistema inicialmente em equilíbrio:
 
-$$T(t)=17+\Delta T_{agua}(t)+\Delta T_{eletrico}(t).$$
+```math
+T(t)=17+\Delta T_{agua}(t)+\Delta T_{eletrico}(t).
+```
 
 A água quente sozinha pode fornecer até 12 °C de aumento, portanto a faixa estacionária desta realização é 17–29 °C. Os dois canais fornecem até 20 °C de aumento, alcançando 37 °C. Esses limites são consequências do modelo linear e dos comandos 0–1; não são limites universais de equipamentos reais.
 
@@ -44,8 +48,10 @@ O artigo [1] investiga **split-range generalizado e MPC**. A toolbox usa seus mo
 
 Para comando único `v` entre 0 e 1 e ponto de divisão `p`:
 
-$$u_{agua}=\operatorname{clip}(v/p,0,1),\qquad
-u_{eletrico}=\operatorname{clip}((v-p)/(1-p),0,1).$$
+```math
+u_{agua}=\operatorname{clip}(v/p,0,1),\qquad
+u_{eletrico}=\operatorname{clip}((v-p)/(1-p),0,1).
+```
 
 No teste manual, `p=0,60`, obtido por `12/(12+8)`. Na malha fechada, o divisor usa os **ganhos estimados**. O recurso prioritário fica saturado quando o segundo começa a atuar.
 
@@ -58,28 +64,64 @@ Essa escolha iguala as inclinações estacionárias das duas faixas: `K_agua/p =
 
 ## Identificação e validação
 
-Cada canal é excitado separadamente com um degrau de comando de 0,25. Adiciona-se ruído gaussiano de desvio-padrão 0,08 °C e estima-se `K`, `τ` e `θ` por mínimos quadrados não lineares. Estes são ensaios **simulados com os modelos publicados**, sem uso dos registros experimentais dos autores.
+Excitar cada recurso separadamente com um degrau de comando de 0,25 e adicionar ruído gaussiano de desvio-padrão 0,08 °C. Os ensaios são **simulados com os canais publicados**, sem usar os registros experimentais dos autores. Identificar água quente e aquecedor elétrico separadamente antes de projetar o divisor e o PI comum.
 
-O ensaio de validação muda o comando entre 0, 0,15, 0,35 e 0,10 e utiliza ruído novo. Os parâmetros estimados ficam congelados. As curvas comparam previsão e medição; o RMSE mede a diferença em °C. Identificar e avaliar nos mesmos dados pode esconder um ajuste que não generaliza, por isso os ensaios estão separados.
+Salvar três ensaios separados como CSV em `dados_ensaio/`, com colunas `tempo`, `entrada` e `saida`. Entrada e saída são desvios em relação ao ponto de operação; manter as unidades do canal e do tempo. Os arquivos são `ajuste_<canal>.csv`, `escolha_<canal>.csv` e `validacao_<canal>.csv`; nesta estratégia, os canais são `agua`, `eletrico`.
+
+| Modelo candidato | Estrutura | Parâmetros livres |
+|---|---|---:|
+| P1D | Um polo real e atraso | 3: ganho, uma constante de tempo e atraso |
+| P2D | Dois polos reais e atraso | 4: ganho, duas constantes de tempo e atraso |
+| P3D | Três polos reais e atraso | 5: ganho, três constantes de tempo e atraso |
+
+```math
+\widehat G_n(s)=\frac{K e^{-\theta s}}{\prod_{i=1}^{n}(\tau_i s+1)},\qquad n=1,2,3.
+```
+
+1. **Ajustar:** estimar cada candidato por mínimos quadrados no primeiro ensaio. As constantes de tempo são positivas, garantindo polos reais estáveis; o atraso é estimado e fica não negativo. Os parâmetros publicados geram a planta, mas não são impostos ao ajuste.
+2. **Escolher com parcimônia:** prever o segundo ensaio sem reajustar. Selecionar o modelo de menor ordem cujo FIT fique até **1 ponto percentual abaixo do melhor FIT**. Mais parâmetros só se justificam quando a melhora de previsão superar essa tolerância.
+3. **Validar:** usar o terceiro ensaio apenas para avaliar o modelo escolhido, com entrada e ruído diferentes. Não reajustar parâmetros nem selecionar novamente com esses dados.
+
+```math
+FIT=100\left(1-\frac{\|y-\widehat y\|_2}{\|y-\overline y\|_2}\right),\qquad
+RMSE=\sqrt{\frac{1}{N}\sum_{k=1}^{N}(y_k-\widehat y_k)^2}.
+```
+
+O FIT compara o erro com a variação medida: pode ser negativo e não significa probabilidade de acerto. O RMSE conserva a unidade da saída. Ambos dependem do ensaio e do ruído; uma curva próxima dos pontos de ajuste, sozinha, não comprova qualidade de previsão.
+
+**Antes do PI-IMC, explicitar a redução:** manter o ganho e o atraso do candidato escolhido e usar `τeq = soma(τi)`.
+
+```math
+\tau_{eq}=\sum_{i=1}^{n}\tau_i,\qquad
+\widehat G_{eq}(s)=\frac{K e^{-\theta s}}{\tau_{eq}s+1}.
+```
+
+Essa aproximação preserva o ganho estático e o primeiro momento, mas não toda a dinâmica de P2D/P3D. A planta publicada permanece na simulação. O experimento de comparação usa a mesma planta e o mesmo tempo IMC para os PIs derivados dos três candidatos; o painel principal usa a seleção automática por parcimônia.
 
 ## Sintonia IMC
 
-O ponto de divisão é recalculado por:
+O ponto de divisão usa os ganhos dos candidatos selecionados:
 
-$$p=\frac{\widehat K_{agua}}{\widehat K_{agua}+\widehat K_{eletrico}}.$$
+```math
+p=\frac{\widehat K_{agua}}{\widehat K_{agua}+\widehat K_{eletrico}}.
+```
 
-Para um PI comum às duas faixas, o notebook escolhe um modelo **aproximado de projeto**:
+Antes da sintonia, reduzir cada canal por `τeq,i = soma(τi)`. Para um PI comum às duas faixas, adotar o seguinte modelo **aproximado de projeto**:
 
-$$K_p=\widehat K_{agua}+\widehat K_{eletrico},\qquad
-\tau_p=\max_i\widehat\tau_i,\qquad\theta_p=\max_i\widehat\theta_i.$$
+```math
+K_p=\widehat K_{agua}+\widehat K_{eletrico},\qquad
+\tau_p=\max_i\tau_{eq,i},\qquad \theta_p=\max_i\widehat\theta_i.
+```
 
-Aplica-se IMC:
+Aplicar IMC:
 
-$$K_c=\frac{\tau_p}{K_p(\lambda+\theta_p)},\qquad T_i=\tau_p.$$
+```math
+K_c=\frac{\tau_p}{K_p(\lambda+\theta_p)},\qquad T_i=\tau_p.
+```
 
-O padrão é `λ=12 min`. Valores maiores tornam a ação mais gradual. O uso da maior constante e do maior atraso é um compromisso didático para os dois canais, **não uma equivalência exata nem uma prova de estabilidade para qualquer divisão**. Nos canais usados, a dinâmica térmica da água é mais lenta.
+O padrão é `λ=12 min`. Valores maiores tornam a ação mais gradual. Usar a maior constante equivalente e o maior atraso é um compromisso didático para os dois canais, **não uma equivalência exata nem uma prova de estabilidade para qualquer divisão**. Comparar as sintonias derivadas de P1D/P2D/P3D mantendo a mesma planta e o mesmo tempo IMC; a comparação não altera a seleção automática usada no painel principal.
 
-O caso “só água” mantém o mesmo PI e limita o comando único a `p`, para comparar a disponibilidade de recurso sem trocar também a sintonia. Isso corresponde à faixa do divisor em que a água abre de 0 a 100%. O motor limita as entradas, interrompe a acumulação integral quando ela empurra contra um limite e atualiza as duas FOPDT em passo de 0,05 min. Os atrasos usam filas de amostras e a parte de primeira ordem usa a solução exata para entrada constante em cada intervalo.
+O caso “só água” mantém o mesmo PI e limita o comando único a `p`, para comparar a disponibilidade de recurso sem trocar também a sintonia. Isso corresponde à faixa do divisor em que a água abre de 0 a 100%. O motor limita as entradas, interrompe a acumulação integral quando ela empurra contra um limite e atualiza os dois canais publicados de primeira ordem com atraso em passo de 0,05 min. Os atrasos usam filas de amostras e a parte de primeira ordem usa a solução exata para entrada constante em cada intervalo.
 
 ## Quando usar e onde ter cuidado
 
@@ -92,7 +134,7 @@ O divisor precisa considerar os ganhos e limites físicos. Recursos com dinâmic
 | Biblioteca | Uso |
 |---|---|
 | NumPy | Dados, ruído, saturação e atualização dos modelos |
-| SciPy (`curve_fit`) | Identificação de cada canal |
+| SciPy (`least_squares`) | Ajuste e comparação dos três candidatos de cada canal |
 | Matplotlib | Aberturas, validação e resposta de temperatura |
 | ipywidgets | Controles simples para os experimentos |
 | IPython | Exibição dos painéis |
@@ -118,3 +160,7 @@ Parâmetros de planta de [1]; divisor clássico, ensaios ruidosos e sintonia IMC
 
 
 Referência da correlação PI utilizada: [APMonitor/BYU — Proportional Integral Control, seção IMC FOPDT Tuning Correlations](https://www.apmonitor.com/pdc/index.php/Main/ProportionalIntegralControl). O artigo brasileiro acima fornece a planta; esta fonte explicita a regra IMC de primeira ordem com atraso.
+
+Referências da identificação: [estruturas de modelos de processo — MathWorks](https://www.mathworks.com/help/ident/ref/idproc.html), [definição de FIT](https://www.mathworks.com/help/ident/ref/compare.html) e [validação de modelos](https://www.mathworks.com/help/ident/ug/validating-models-after-estimation.html). O código Python realiza o ajuste por mínimos quadrados; não utiliza MATLAB.
+
+Para usar ensaios próprios, definir `usar_ensaio_externo=True`. Fornecer os três CSVs por canal em desvios do ponto de operação, começando em equilíbrio com entrada zero, na unidade de tempo e nas escalas desta planta. A família implementada é restrita a ganhos positivos e polos reais estáveis. O ajuste assume entrada mantida entre amostras; atrasos fracionários usam interpolação. Dados com outras dinâmicas exigem outras estruturas e revisão da sintonia.
