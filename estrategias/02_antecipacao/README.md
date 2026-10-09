@@ -52,7 +52,7 @@ Salvar três ensaios separados como CSV em `dados_ensaio/`, com colunas `tempo`,
 | P3D | Três polos reais e atraso | 5: ganho, três constantes de tempo e atraso |
 
 ```math
-\widehat G_n(s)=\frac{K e^{-\theta s}}{\prod_{i=1}^{n}(\tau_i s+1)},\qquad n=1,2,3.
+\hat{G}_n(s)=\frac{K e^{-\theta s}}{\prod_{i=1}^{n}(\tau_i s+1)},\qquad n=1,2,3.
 ```
 
 1. **Ajustar:** estimar cada candidato por mínimos quadrados no primeiro ensaio. As constantes de tempo são positivas, garantindo polos reais estáveis; o atraso é estimado e fica não negativo. Os parâmetros publicados geram a planta, mas não são impostos ao ajuste.
@@ -60,8 +60,8 @@ Salvar três ensaios separados como CSV em `dados_ensaio/`, com colunas `tempo`,
 3. **Validar:** usar o terceiro ensaio apenas para avaliar o modelo escolhido, com entrada e ruído diferentes. Não reajustar parâmetros nem selecionar novamente com esses dados.
 
 ```math
-FIT=100\left(1-\frac{\|y-\widehat y\|_2}{\|y-\overline y\|_2}\right),\qquad
-RMSE=\sqrt{\frac{1}{N}\sum_{k=1}^{N}(y_k-\widehat y_k)^2}.
+FIT=100\left(1-\frac{\|y-\hat{y}\|_2}{\|y-\overline y\|_2}\right),\qquad
+RMSE=\sqrt{\frac{1}{N}\sum_{k=1}^{N}(y_k-\hat{y}_k)^2}.
 ```
 
 O FIT compara o erro com a variação medida: pode ser negativo e não significa probabilidade de acerto. O RMSE conserva a unidade da saída. Ambos dependem do ensaio e do ruído; uma curva próxima dos pontos de ajuste, sozinha, não comprova qualidade de previsão.
@@ -70,7 +70,7 @@ O FIT compara o erro com a variação medida: pode ser negativo e não significa
 
 ```math
 \tau_{eq}=\sum_{i=1}^{n}\tau_i,\qquad
-\widehat G_{eq}(s)=\frac{K e^{-\theta s}}{\tau_{eq}s+1}.
+\hat{G}_{eq}(s)=\frac{K e^{-\theta s}}{\tau_{eq}s+1}.
 ```
 
 Essa aproximação preserva o ganho estático e o primeiro momento, mas não toda a dinâmica de P2D/P3D. A planta publicada permanece na simulação. O experimento de comparação usa a mesma planta e o mesmo tempo IMC para os PIs derivados dos três candidatos; o painel principal usa a seleção automática por parcimônia.
