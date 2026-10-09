@@ -1,0 +1,36 @@
+close all
+clc
+
+% Nomenclatura para especificar a estrutura do modelo
+%'Pk': means a process with k poles (not including a possible integration)
+%'Z': means that a Zero (numerator Tz~=0) is included.
+%'D': means that a deadtime Td~=0 is included
+%'I': means that an integrating process is chosen.
+%'U': means that the model is underdamped: The first two poles are complex.
+Ts=.1; % intervalo de amostragem
+
+z = iddata(L_med(1:400),Fi_med(1:400),Ts); % criação do objeto de saida e entrada
+
+% T_med  -- dados experimentais da temperatura medido em desvio [=] C
+% Fv_med -- dados experimentais da vazao de vapor medido em desvio [=] m3/min %
+% Ts    -- intervalo de amostragem [=] min
+
+estrutura = idproc('P1'); % setup da estrutura de modelo escolhida
+Modelo_estimado = pem(z,estrutura);  % estimacao dos parametros do modelo
+yest=idsim(Fi_med,Modelo_estimado); % simulacao a infinitos passos a frente
+
+figure(1)
+plot(L_med(1:end-1),'b-')
+hold on
+plot(yest(1:end-1),'r.-')
+legend('Exp','Pred')
+
+% modelo discretizado
+na = 1;
+nb = 1;
+nc = 1;
+nk = 1 ;
+k=1;
+obj1 = arx(z,[na nb nk]);
+yp1=predict(obj1,z,k);
+figure(2)

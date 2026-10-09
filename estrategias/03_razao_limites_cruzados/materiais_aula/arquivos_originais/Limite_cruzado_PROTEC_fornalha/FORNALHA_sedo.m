@@ -1,0 +1,238 @@
+function  [sys, x0]  = FORNALHA_sedo(t,x,u,flag,Estado_Estacionario)
+
+%Furnace
+	effurn = 0.8712;		%Energy Efficiency
+        cpfurn = 1.05e+05;		%Heat Capacity (J/K)
+        vol = 250;			%Reaction Volume (m3)
+
+%Fluid Tubing
+        n = 20;				%Number of Partition
+        L = 40;				%Length (m)
+        dL = L / n;			%Length of Partion (m)
+        d = 0.08;			%Diameter (m)
+        h = 400;			%Heat Transfer Coefficient (J/m2-min-K)
+	    pi = 3.1415927;
+        csa = pi * (d / 2)^2;		%Cross-Sectional Area (m2)
+
+%Fluid (Eicosane n-C20H42 mp = ?, bp = ?)
+        rhofl = 786.6;			%Density (kg/m3)
+        cpfl = 463.31;			%Heat Capacity (J/kg-K)
+        tauh = rhofl * cpfl * d / (4 * h);
+
+%Combustion Reactions
+
+%	CH4  +  3/2 O2  -->  C0  +  2H2O  :  Rxn 1
+       
+%	C0  +  1/2 O2  -->  CO2  : Rxn 2
+
+	    k1 = 400;			%Rxn 1 Rate Constant (m^4.5/mol^1.5-s)
+	    k2 = 200;			%Rxn 2 Rate Constant (m^1.5/mol^0.5-s)
+        hrxn1 = 6.0443e+05;		%Rxn 1 Heat of Reaction (J/mol) (T = 1400K)
+        hrxn2 = 2.8498e+05;		%Rxn 2 Heat of Reaction (J/mol) (T = 1400K)
+
+	%Initial Heat Capacities (J/mol-K) (T = 310K)
+	    cpch4i  = 35.826;		%Methane
+        cph2oi  = 33.634;		%Water
+        cpo2i  = 29.595;		%Oxygen 
+        cpn2i  = 29.144;		%Nitrogen
+        cpcoi  = 29.235;			%Carbon Monoxide
+        cpco2i  = 38.053;		%Carbon Dioxide
+   
+        %Final Heat Capacities (J/mol-K) (T = 1400K)
+	    cpch4f  = 84.586;		%Methane
+        cph2of  = 45.778;		%Water
+        cpo2f  = 36.048;		%Oxygen 
+        cpn2f  = 34.189;		%Nitrogen
+        cpcof  = 34.538;		%Carbon Monoxide
+        cpco2f  = 57.042;		%Carbon Dioxide
+
+%Other Constants
+        R = 8.206e-05;			%Ideal Gas Constant (m3-atm/mol-K)
+        P = 1; 				%Atmospheric Pressure (atm)
+      
+if abs(flag) == 1   	%  state
+   x   = x .* [ x > 0 ]   ;
+   u   = u .* [ u > 0 ]   ;
+
+
+	rhoig = P / (R * u(4));		%Ideal Gas Density (mol/m3)
+
+	feed = u(3) + u(5) ;	        %Combustion Reactants Feed Rate (m3/min)
+
+        velfl = u(1) / csa;		%Velocity of Fluid (m/min)
+
+%Initial Concentrations (mol/m3)
+	cch4i = u(7) * u(5) * rhoig / ( feed + eps ) ;		%Methane
+	ch2oi = (1 - u(7)) * u(5) * rhoig / ( feed + eps ) ;	%Water
+	co2i = 0.21 * u(3) * rhoig / ( feed + eps ) ;		%Oxygen
+	cn2i = 0.79 * u(3) * rhoig / ( feed + eps ) ;		%Nitrogen
+	ccoi = 0;					%Carbon Monoxide
+	cco2i = 0;					%Carbon Dioxide
+
+%Initial Species Flow Rates (mol/s)
+        nch4i = cch4i * feed;				%Methane
+        nh2oi = ch2oi * feed;				%Water
+        no2i = co2i * feed;				%Oxygen
+        nn2i = cn2i * feed;				%Nitrogen
+        ncoi = 0;					%Carbon Monoxide
+        nco2i = 0;					%Carbon Dioxide
+
+  %Final Species Flow Rates (mol/s)
+        nch4f = nch4i - k1 * x(1) * x(3) ^ 1.5 * vol;		%Methane
+        nh2of = nh2oi + 2 * k1 * x(1) * x(3) ^ 1.5 * vol;	%Water
+        no2f = no2i - 1.5 * k1 * x(1) * x(3) ^ 1.5 * vol ...
+               - 0.5 * k2 * x(4) * x(3) ^ 0.5 * vol;		%Oxygen
+        nn2f = nn2i;						%Nitrogen
+        ncof = k1 * x(1) * x(3) ^ 1.5 * vol ...
+              - k2 * x(4) * x(3) ^ 0.5 * vol;			%Carbon Monoxide
+        nco2f = k2 * x(4) * x(3) ^ 0.5 * vol;			%Carbon Dioxide
+	
+	    ntotf = nch4f + nh2of + no2f + nn2f + ncof + nco2f;	%Total
+
+%Combustion Products Exit Flow (m3/min), from mass balance on carbon	
+%	exit = nch4i / (x(1) + x(4) + x(5));
+%Combustion Products Exit Flow (m3/min), from mass balance on oxygen
+	exit = (2 * no2i + nh2oi) / (x(2) + 2 * x(3) + x(4) + 2 * x(5));
+
+	
+%ntotf / (P / (R * x(5+n+1)))
+
+%Mass Balance of Combustion Species
+%Methane x(1), Water x(2), Oxygen x(3), Carbon Monoxide x(4), Carbon Dioxide x(5) 
+	  sys(1) = (1 / vol) * (nch4i - exit * x(1)) - k1 * x(1) * x(3) ^ 1.5; 
+	  sys(2) = (1 / vol) * (nh2oi - exit * x(2)) + 2 * k1 * x(1) * x(3) ^ 1.5;
+	  sys(3) = (1 / vol) * (no2i - exit * x(3)) ...
+		 - 1.5 * k1 * x(1) * x(3) ^ 1.5 - 0.5 * k2 * x(4) * x(3) ^ 0.5;
+	  sys(4) = (1 / vol) * (ncoi - exit * x(4)) ...
+		   + k1 * x(1) * x(3) ^ 1.5 - k2 * x(4) * x(3) ^ 0.5;
+	  sys(5) = (1 / vol) * (nco2i - exit * x(5)) + k2 * x(4) * x(3) ^ 0.5;
+	
+%Energy Balance of Combustion Species and Fluid
+
+  %dT/dt for 1st Partition of Tubing (x(1+5)) (K/s)
+%	wht = (x(5+n+1) - x(1+5)) / n;
+
+        sys(1+5) = (velfl / dL) * (u(2) - x(1+5)) + (1 / tauh) * (x(5+n+1) - x(1+5));
+
+  %dT/dt for 2nd to nth Partition of Tubing (x(2+5) to x(n+5)) (K/s)
+	for i = (2+5):(n+5)
+% 	   ht = (x(5+n+1) - x(i)) / n;
+%           wht = wht + ht;
+
+           sys(i) = (velfl / dL) * (x(i-1) - x(i)) + (1 / tauh) * (x(5+n+1) - x(i)) ;
+	end
+	
+  %Heat Exchange (J/s)
+    %Energy Lost to Species as Enthalpy, (Final - Initial) {-}
+        qi = (nch4i * cpch4i + nh2oi * cph2oi + no2i * cpo2i + nn2i * cpn2i) * u(4) ;
+        qf = (nch4f * cpch4f + nh2of * cph2of + no2f * cpo2f + nn2f * cpn2f + ...
+              ncof * cpcof + nco2f * cpco2f) * x(5+n+1) ;
+             
+    %Energy Generated by Reactions {+}
+    	qrxn1 = effurn * (k1 * x(1) * x(3) ^ 1.5 * vol) * hrxn1 ;
+	qrxn2 = effurn * (k2 * x(4) * x(3) ^ 0.5 * vol) * hrxn2     ;
+
+    %Energy Lost to Fluid {-}
+	qfluid = h * d * dL * pi * (n * x(5+n+1) - sum(x(5+1:5+n))) ;
+	% n * x(5+n+1) - sum(x(5+1:5+n)) ==> sum(Tfurn - Ti[i=1 to n])
+  
+  %Energy Balance of Furnace (x(5+n+1), furnace temperature)
+        sys(5+n+1) = (qrxn1 + qrxn2 - (qf - qi) - qfluid) / cpfurn ; 
+
+elseif flag  == 3, 	% Output
+   x = x .* [ x > 0 ]     ;
+   u = u .* [ u > 0 ]     ;
+
+%u(1:7) are zero first time thru, giving "Warning: Divide by zero" message.
+	if u(3) == 0 | u(4) == 0 | u(5) == 0 | u(7) ==0
+ 	   u(3) = 13.5;
+	   u(4) = 310;
+	   u(5) = 0.93;
+	   u(7) = 1;
+	end
+
+%Final Fluid Temperature (K)
+	sys(1) = x(5+n) ;
+	
+%Furnace Temperature (K)
+	sys(2) = x(5+n+1) ;
+	
+%Total Exit Flow Rate (m3/s) , from mass balance on total carbon.
+	rhoig = P / (R * u(4));		%Ideal Gas Density at Feed Temperature
+	no2i = 0.21 * u(3) * rhoig;
+	nh2oi = (1.0-u(7)) * u(5) * rhoig;
+	nch4i = u(7) * u(5) * rhoig;		%Methane Feed Rate (mol/s)
+%   Exit Flow Rate based on Oxygen, instead of Carbon
+	exit = (2 * no2i + nh2oi) / (x(2) + 2 * x(3) + x(4) + 2 * x(5));
+%	exit = nch4i / (x(1) + x(4) + x(5));	%Exit Flow Rate (m3/s)
+	sys(3) = exit;
+	
+%Final Oxygen Mole Fraction
+  %Molar Flow Rates (mol/s)
+%	nch4f = u(7) * u(5) * rhoig - k1 * x(1) * x(3) ^ 1.5 * vol;	%Methane
+%	nh2of = (1 - u(7)) * u(5) * rhoig + ...
+%		2 * k1 * x(1) * x(3) ^ 1.5 * vol;		%Water
+%	no2f = 0.21 * u(3) * rhoig - ...
+%		1.5 * k1 * x(1) * x(3) ^ 1.5 * vol ...
+%		- 0.5 * k2 * x(4) * x(3) ^ 0.5 * vol;		%Oxygen
+%	nn2f = 0.79 * u(3) * rhoig / exit;				%Nitrogen
+%	ncof = k1 * x(1) * x(3) ^ 1.5 * vol ...
+%		- k2 * x(4) * x(3) ^ 0.5 * vol;			%Carbon Monoxide
+%	nco2f = k2 * x(4) * x(3) ^ 0.5 * vol;			%Carbon Dioxide
+%	ntotf = nch4f + nh2of + no2f + nn2f + ncof + nco2f;	%Total
+	cn2f = 0.79 * u(3) * rhoig / exit;	%Final Nitrogen Concentration
+	
+	sys(4) = x(3);    % / (x(1) + x(2) + x(3) + cn2f + x(4) + x(5));
+
+    sys(5:4+26) = x ;
+    
+elseif flag  == 0, 	% Initialization
+
+%Return System Sizes
+%[no. continuous states, no. discrete states, no. outputs, no. inputs, no. roots,
+%direct feed-through]
+        sys = [ 26  0  30  7  1  1 ]; 
+
+% Initial Conditions on States
+%         x0(1) = 0.00044767167372;	%Methane
+%         x0(2) = 1.66276994394945;	%Water
+%         x0(3) = 0.87336856859737;	%Oxygen
+%         x0(4) = 0.00078122994667;	%Carbon Monoxide
+%         x0(5) = 0.83060374202806;	%Carbon Dioxide
+% 
+% 	x0(5+1) = 0.32702777948927e+03;		%Partion Temperatures (1 - 20) (K)
+% 	x0(5+2) = 0.34379131696964e+03;
+% 	x0(5+3) = 0.36029471302505e+03;
+% 	x0(5+4) = 0.37654200460542e+03;
+% 	x0(5+5) = 0.39253716601409e+03;
+% 	x0(5+6) = 0.40828410988000e+03;
+% 	x0(5+7) = 0.42378668811481e+03;
+% 	x0(5+8) = 0.43904869285509e+03;
+% 	x0(5+9) = 0.45407385738992e+03;
+% 	x0(5+10) = 0.46886585707415e+03;
+% 	x0(5+11) = 0.48342831022740e+03;
+% 	x0(5+12) = 0.49776477901913e+03;
+% 	x0(5+13) = 0.51187877034007e+03;
+% 	x0(5+14) = 0.52577373665998e+03;
+% 	x0(5+15) = 0.53945307687219e+03;
+% 	x0(5+16) = 0.55292013712503e+03;
+% 	x0(5+17) = 0.56617821164034e+03;
+% 	x0(5+18) = 0.57923054351925e+03;
+% 	x0(5+19) = 0.59208032553553e+03;
+% 	x0(5+20) = 0.60473070091654e+03;
+% 	
+%     x0(1+n+5) = 1.40727168492949e+03;	%Furnace Temperature (K)
+% 
+% kk
+
+% Autor:  Ricardo Kalid
+%         kalid@ufba.br
+
+x0 = [ Estado_Estacionario(41:40+26)' ] ;    
+else 
+% Other Flag Options Not Defined.
+	sys = [ ];
+% Autor:  Ricardo Kalid
+%         kalid@ufba.br
+
+end
