@@ -1,7 +1,5 @@
-# Materiais de aula
+# Materiais de apoio
 
-O arquivo `Limite_cruzado_PROTEC_fornalha (1).rar` foi fornecido com os materiais da disciplina. Seu conteúdo está extraído em `arquivos_originais/`, com os nomes e os bytes originais, inclusive arquivos auxiliares e cópias de versões anteriores.
+Acervo: `Limite_cruzado_PROTEC_fornalha (1).rar`.
 
-## Origem e créditos
-
-Material de aula fornecido pelo usuário. A autoria, os créditos e os avisos de direitos autorais dos arquivos originais foram preservados. Estes arquivos são referências de estudo e conservam a autoria e os direitos de suas fontes.
+[Arquivos MATLAB e Simulink](arquivos_originais/). Autoria indicada nos arquivos originais.

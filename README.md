@@ -1,49 +1,51 @@
 # Toolbox de controle clássico
 
-Cinco estratégias, **um notebook interativo para cada uma**. A ideia é enxergar o que cada estratégia acrescenta e experimentar essa diferença antes de usar em outro processo.
+Notebooks de controle clássico em Python.
 
-Os notebooks trazem códigos em português, comentários curtos, ensaios CSV com ruído, comparação P1D/P2D/P3D, escolha com parcimônia, validação final separada e sintonia IMC. A teoria, as bibliotecas, a origem dos modelos e os materiais de apoio ficam no README de cada pasta.
-
-## Por onde começar
-
-| Estratégia | O que ela acrescenta | Material |
+| Estratégia | Teoria | Código |
 |---|---|---|
-| 01 — Cascata | Uma medida intermediária e uma malha interna para reagir antes da saída principal | [Pasta e explicação](estrategias/01_controle_cascata/README.md) · [Colab](https://colab.research.google.com/drive/1NXIlPniygCnQuvOYHTX7nrvKJKcmN1B3) |
-| 02 — Antecipação (feedforward) | Usa a medida da perturbação para agir antes que apareça erro | [Pasta e explicação](estrategias/02_antecipacao/README.md) · [Colab](https://colab.research.google.com/drive/132PqVwWt00uGhxk0T4wMzUwh8kETtNNf) |
-| 03 — Razão e limites cruzados | Coordena duas vazões; os limites cruzados definem qual delas deve mudar primeiro | [Pasta e explicação](estrategias/03_razao_limites_cruzados/README.md) · [Colab](https://colab.research.google.com/drive/1e6rVoVLpmtAASvUmJ_kE-cIBIlpE6GFa) |
-| 04 — Faixa dividida (split-range) | Distribui um único comando entre recursos de atuação diferentes | [Pasta e explicação](estrategias/04_split_range/README.md) · [Colab](https://colab.research.google.com/drive/172l9HdNCzOoUF0heMQLK04Rvqr6JDvvt) |
-| 05 — Seletivo (override) | Escolhe qual controlador assume o mesmo atuador quando uma restrição pede prioridade | [Pasta e explicação](estrategias/05_controle_seletivo/README.md) · [Colab](https://colab.research.google.com/drive/1vM2Ly36GAoXYpaAFQt31-j3gfqcSdEv6) |
+| 01 — Cascata | [README](estrategias/01_controle_cascata/README.md) | [Colab](https://colab.research.google.com/drive/1NXIlPniygCnQuvOYHTX7nrvKJKcmN1B3) |
+| 02 — Antecipação | [README](estrategias/02_antecipacao/README.md) | [Colab](https://colab.research.google.com/drive/132PqVwWt00uGhxk0T4wMzUwh8kETtNNf) |
+| 03 — Razão e limites cruzados | [README](estrategias/03_razao_limites_cruzados/README.md) | [Colab](https://colab.research.google.com/drive/1e6rVoVLpmtAASvUmJ_kE-cIBIlpE6GFa) |
+| 04 — Faixa dividida | [README](estrategias/04_split_range/README.md) | [Colab](https://colab.research.google.com/drive/172l9HdNCzOoUF0heMQLK04Rvqr6JDvvt) |
+| 05 — Seletivo | [README](estrategias/05_controle_seletivo/README.md) | [Colab](https://colab.research.google.com/drive/1vM2Ly36GAoXYpaAFQt31-j3gfqcSdEv6) |
 
-Abra uma pasta, leia o diferencial e use o link **Abrir no Colab**. Execute as células de cima para baixo. Primeiro aparecem o processo, a identificação e sua validação; depois, a sintonia e o painel. Mude um parâmetro por vez e compare as duas situações do gráfico.
+[Pasta no Drive](https://drive.google.com/drive/folders/1wLEY7YQ50n-6a33st90eDabJtU6B0zS7) · [Materiais de identificação](materiais_comuns/)
 
-[Pasta desta versão no Google Drive](https://drive.google.com/drive/folders/1wLEY7YQ50n-6a33st90eDabJtU6B0zS7).
+## Uso
 
-## Identificar antes de sintonizar
+Abrir o Colab e executar as células em ordem. Para execução local, usar Python 3.11 ou posterior e instalar [requirements.txt](requirements.txt).
 
-Separar três etapas: **ajustar** P1D/P2D/P3D no primeiro ensaio, **escolher** no segundo e **validar** no terceiro. Os candidatos têm 3, 4 e 5 parâmetros livres, respectivamente, polos reais estáveis e atraso estimado. Escolher o de menor ordem até 1 ponto percentual abaixo do melhor FIT no ensaio de escolha. O ensaio final não participa do ajuste nem da seleção.
+Cada estratégia contém um notebook, teoria, referências, imagens, ensaios CSV e materiais de apoio.
 
-Antes do PI-IMC, somar as constantes de tempo do candidato escolhido para obter `τeq`. É uma redução explícita para a sintonia; a simulação mantém a planta publicada. O experimento de comparação das ordens usa a mesma planta e o mesmo tempo IMC, enquanto o painel de cada estratégia usa a seleção automática.
+## Identificação
 
-## Organização
+Os ensaios simulados incluem ruído. Para cada canal:
 
-Cada pasta de estratégia contém:
+1. Ajustar P1D, P2D e P3D por mínimos quadrados no primeiro ensaio.
+2. No segundo, escolher o modelo de menor ordem até 1 ponto percentual do melhor FIT.
+3. Validar no terceiro, sem reajustar parâmetros.
 
-- `toolbox.ipynb`: o único notebook do tema, com o experimento interativo;
-- `README.md`: teoria, quando aplicar, bibliotecas, artigo brasileiro utilizado e apoio nacional;
-- `dados_ensaio/`: CSVs de ajuste, escolha do modelo e validação final, com colunas `tempo`, `entrada`, `saida`;
-- `assets/` ou `imagens/`: recortes das figuras originais, com fonte indicada;
-- `materiais_aula/`: arquivos fornecidos no acervo da disciplina, preservados para consulta.
+P1D/P2D/P3D têm 1/2/3 polos reais estáveis, atraso estimado e 3/4/5 parâmetros livres. A tolerância de 1 ponto percentual é um critério de seleção, não um teste estatístico.
 
-Os arquivos de identificação comuns estão em [materiais_comuns](materiais_comuns/). No acervo recebido não havia código específico de faixa dividida; a pasta 04 contém o material de apoio disponível, sem atribuir uma implementação nova ao acervo original.
+```math
+FIT=100\left(1-\frac{\lVert y-\hat y\rVert_2}{\lVert y-\bar y\rVert_2}\right),\qquad
+RMSE=\sqrt{\frac{1}{N}\sum_{k=1}^{N}(y_k-\hat y_k)^2}.
+```
 
-## Executar fora do Colab
+FIT pode ser negativo; RMSE tem a unidade da saída. Para PI-IMC, reduzir o modelo mantendo ganho e atraso e usando a soma das constantes de tempo:
 
-Use Python 3.11 ou posterior com Jupyter Notebook/JupyterLab e os pacotes de [requirements.txt](requirements.txt). A primeira célula de cada notebook instala as dependências necessárias no Colab. O painel usa `ipywidgets` e atualiza quando você solta o controle deslizante.
+```math
+\tau_{eq}=\sum_i\tau_i,\qquad
+\hat G_{eq}(s)=\frac{K e^{-\theta s}}{\tau_{eq}s+1}.
+```
 
-## Modelos e referências
+A redução preserva ganho estático e primeiro momento. A simulação usa a planta completa.
 
-Os cinco casos usam funções de transferência publicadas por autores brasileiros. As figuras são recortes dos artigos ou de material institucional; cada README identifica o artigo, as equações utilizadas e as adaptações didáticas. Os ensaios de identificação são gerados em simulação, com ruído: não são apresentados como medições experimentais dos artigos.
+Para dados próprios, usar `usar_ensaio_externo=True` e fornecer `ajuste_<canal>.csv`, `escolha_<canal>.csv` e `validacao_<canal>.csv` em `dados_ensaio/`. Colunas: `tempo,entrada,saida`; amostragem uniforme e desvios do ponto de operação, começando em equilíbrio. Manter as unidades do caso. Os candidatos consideram ganhos positivos e polos reais; a entrada é mantida entre amostras e atrasos fracionários usam interpolação.
 
-As simulações representam os modelos e a faixa de operação descritos em cada tema. Os READMEs explicam as simplificações relevantes. Os créditos e os arquivos de terceiros permanecem associados às suas fontes.
+## Referências
 
-Versão 0.9 — identificação por ensaios, parcimônia e comentários impessoais.
+- Rivera, D. E.; Morari, M.; Skogestad, S. (1986). *Internal Model Control. 4. PID Controller Design*. [DOI](https://doi.org/10.1021/i200032a041).
+- [PI-IMC para primeira ordem com atraso — APMonitor/BYU](https://www.apmonitor.com/pdc/index.php/Main/ProportionalIntegralControl).
+- MathWorks: [modelos de processo](https://www.mathworks.com/help/ident/ref/idproc.html), [FIT](https://www.mathworks.com/help/ident/ref/compare.html) e [validação](https://www.mathworks.com/help/ident/ug/validating-models-after-estimation.html).
